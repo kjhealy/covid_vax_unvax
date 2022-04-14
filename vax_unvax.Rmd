@@ -1,0 +1,146 @@
+---
+title: "Vaccinated vs Unvaccinated Mortality"
+author: "Kieran Healy"
+date: '2022-04-14'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+## If not installed:
+# install.packages("MMWRweek")
+# install.packages("janitor")
+
+
+library(tidyverse)
+
+```
+
+
+## Rates of COVID-19 Cases or Deaths by Age Group and Vaccination Status
+
+### Get the data
+Read the documentation at CDC here: 
+
+<https://data.cdc.gov/Public-Health-Surveillance/Rates-of-COVID-19-Cases-or-Deaths-by-Age-Group-and/3rge-nu2a>
+
+```{r}
+dat <- "https://data.cdc.gov/api/views/3rge-nu2a/rows.csv?accessType=DOWNLOAD"
+
+df <- read_csv(dat) %>% 
+  janitor::clean_names()  %>% 
+  separate(mmwr_week, c("year", "epiweek"), 4) %>% 
+  mutate(date = MMWRweek::MMWRweek2Date(as.integer(year), as.integer(epiweek)), 
+         .before = year)
+
+
+df
+
+```
+
+## Quick look
+
+```{r}
+
+df %>% 
+  filter(outcome == "death", 
+         age_group == "all_ages_adj", 
+         vaccine_product == "all_types") %>% 
+  select(date, vaccinated_with_outcome, unvaccinated_with_outcome, 
+         age_adjusted_vax_ir, age_adjusted_unvax_ir) %>% 
+  summarize(tot_vax_deaths = sum(vaccinated_with_outcome), 
+            tot_unvax_deaths = sum(unvaccinated_with_outcome))
+```
+
+## Plots
+
+### Count of unvaccinated vs vaccinated deaths
+
+```{r}
+
+out <- df %>% 
+  filter(outcome == "death", 
+         age_group == "all_ages_adj", 
+         vaccine_product == "all_types") %>% 
+  select(date, vaccinated_with_outcome, unvaccinated_with_outcome) %>%
+  pivot_longer(vaccinated_with_outcome:unvaccinated_with_outcome, 
+               names_to = "population", 
+               values_to = "count") %>% 
+  mutate(population = recode(population,  
+                             "vaccinated_with_outcome" = "Vaccinated",
+                             "unvaccinated_with_outcome" = "Unvaccinated")) %>% 
+  ggplot(aes(x = date, y = count, color = population)) + 
+  geom_line(size = 1.2) + 
+  scale_color_manual(values = c("#E69F00", "#0072B2")) + 
+  scale_x_date(date_breaks = "month", 
+                 labels = scales::label_date_short()) + 
+  labs(title = "CDC: COVID-19 Deaths amongst Vaccinated vs Unvaccinated",
+       x = "Date", 
+       y = "Raw Deaths Count", 
+       caption = "Data: CDC. Graph: @kjhealy",
+       color = "Group") + 
+  theme(legend.position = "top")  
+
+ggsave(file = "figures/v_u_count.pdf", out, height = 3, width = 8)
+```
+
+### Facet by age for all adults
+
+```{r}      
+out <- df %>% 
+  filter(outcome == "death", 
+         vaccine_product == "all_types", 
+         age_group %nin% c("5-11", "12-17", "all_ages_adj")) %>% 
+  group_by(date, age_group) %>% 
+  summarize(tot_vax = sum(vaccinated_with_outcome),
+      tot_unvax = sum(unvaccinated_with_outcome)) %>% 
+  pivot_longer(tot_vax:tot_unvax, 
+               names_to = "population", 
+               values_to = "count") %>% 
+  mutate(population = recode(population,  
+                             "tot_vax" = "Vaccinated",
+                             "tot_unvax" = "Unvaccinated")) %>% 
+  ggplot(aes(x = date, y = count, color = population)) + 
+  geom_line(size = 1.2) + 
+  facet_wrap(~ age_group, nrow = 1) + 
+  scale_color_manual(values = c("#E69F00", "#0072B2")) + 
+  scale_x_date(date_breaks = "month", 
+                 labels = scales::label_date_short(format = c("%Y", "%m"))) + 
+  labs(title = "CDC: COVID-19 Deaths amongst Vaccinated vs Unvaccinated",
+       subtitle = "All Adult Age Groups",
+       x = "Date", 
+       y = "Raw Deaths Count", 
+       caption = "Data: CDC. Graph: @kjhealy",
+       color = "Group") + 
+  theme(legend.position = "top")  
+  
+ggsave(file = "figures/v_u_age_count.pdf", out, height = 4.5, width = 14)
+
+```
+
+### Age-adjusted IRR for full population
+
+```{r}
+
+out <- df %>% 
+  filter(outcome == "death", 
+         age_group == "all_ages_adj", 
+         vaccine_product == "all_types") %>% 
+  ggplot(aes(x = date, y = age_adjusted_irr)) + 
+  geom_line(size = 1.2) + 
+  scale_x_date(date_breaks = "month", 
+                 labels = scales::label_date_short()) + 
+  scale_y_continuous(breaks = c(1, 5, 10, 15, 20), labels = c("1x", "5x", "10x", "15x", "20x")) + 
+  expand_limits(y = 1) + 
+  labs(title = "COVID-19 Deaths, Age-Adjusted Incidence Rate Ratio",
+       subtitle = "Ratio of Unvaccinated death rate to Vaccinated death rate",
+       x = "Date", 
+       y = "Rate Ratio", 
+       caption = "Data: CDC. Graph: @kjhealy") + 
+  theme(legend.position = "top") 
+
+ggsave(file = "figures/v_u_irr.pdf", out, height = 4, width = 9)
+
+```
+
