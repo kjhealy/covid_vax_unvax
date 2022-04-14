@@ -3,7 +3,7 @@
  ![Raw Counts by vaccination status](figures/v_u_count.png)
  
  
-![Raw Counts by age group and vaccination status](figures/v_u_count.png)
+![Raw Counts by age group and vaccination status](figures/v_u_age_count.png)
 
 
 ![Incidence Rate Ratio for vaccination status](figures/v_u_irr.png)
