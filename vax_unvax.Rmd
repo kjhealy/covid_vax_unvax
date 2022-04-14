@@ -5,7 +5,9 @@ date: '2022-04-14'
 output: html_document
 ---
 
-```{r setup, include=FALSE}
+## Setup
+
+```{r setup}
 knitr::opts_chunk$set(echo = TRUE)
 
 ## If not installed:
@@ -14,6 +16,11 @@ knitr::opts_chunk$set(echo = TRUE)
 
 
 library(tidyverse)
+
+# Gold and Blue
+two_colors <- c("#E69F00", "#0072B2")
+
+
 
 ```
 
@@ -72,7 +79,7 @@ out <- df %>%
                              "unvaccinated_with_outcome" = "Unvaccinated")) %>% 
   ggplot(aes(x = date, y = count, color = population)) + 
   geom_line(size = 1.2) + 
-  scale_color_manual(values = c("#E69F00", "#0072B2")) + 
+  scale_color_manual(values = two_colors) + 
   scale_x_date(date_breaks = "month", 
                  labels = scales::label_date_short()) + 
   labs(title = "CDC: COVID-19 Deaths amongst Vaccinated vs Unvaccinated",
@@ -104,7 +111,7 @@ out <- df %>%
   ggplot(aes(x = date, y = count, color = population)) + 
   geom_line(size = 1.2) + 
   facet_wrap(~ age_group, nrow = 1) + 
-  scale_color_manual(values = c("#E69F00", "#0072B2")) + 
+  scale_color_manual(values = two_colors) + 
   scale_x_date(date_breaks = "month", 
                  labels = scales::label_date_short(format = c("%Y", "%m"))) + 
   labs(title = "CDC: COVID-19 Deaths amongst Vaccinated vs Unvaccinated",
@@ -123,6 +130,8 @@ ggsave(file = "figures/v_u_age_count.pdf", out, height = 4.5, width = 14)
 
 ```{r}
 
+y_ticks <- c(1, seq(5, 20, 5))
+
 out <- df %>% 
   filter(outcome == "death", 
          age_group == "all_ages_adj", 
@@ -131,7 +140,7 @@ out <- df %>%
   geom_line(size = 1.2) + 
   scale_x_date(date_breaks = "month", 
                  labels = scales::label_date_short()) + 
-  scale_y_continuous(breaks = c(1, 5, 10, 15, 20), labels = c("1x", "5x", "10x", "15x", "20x")) + 
+  scale_y_continuous(breaks = y_ticks, labels = paste0(y_ticks, "x")) + 
   expand_limits(y = 1) + 
   labs(title = "COVID-19 Deaths, Age-Adjusted Incidence Rate Ratio",
        subtitle = "Ratio of Unvaccinated death rate to Vaccinated death rate",
